@@ -1,0 +1,31 @@
+android_main()
+     │
+     ├── GameEngine::init()
+     │       ├── ThreadPool(hwThreads-2 workers)
+     │       ├── JobSystem(ThreadPool)
+     │       ├── EntityManager(JobSystem)
+     │       │       ├── NetworkSystem  ──→ NetworkManager (Yojimbo)
+     │       │       ├── MovementSystem ──→ reads Input, writes TransformComponent
+     │       │       ├── PhysicsSystem  ──→ PhysicsWorld (Jolt)
+     │       │       └── RenderSystem   ──→ VulkanRenderer (draw call submission)
+     │       ├── VulkanRenderer
+     │       │       ├── VulkanPipeline[Opaque/Transparent/Shadow]
+     │       │       ├── VulkanBuffer[VBO, IBO, UBO, Instance]
+     │       │       └── ShaderManager (AAsset → SPIR-V cache)
+     │       ├── PhysicsWorld (Jolt::PhysicsSystem)
+     │       ├── AudioEngine (Oboe stream → mix → AAudio)
+     │       └── NetworkManager (Yojimbo client)
+     │
+     └── Main loop (Game Thread, ~16.67ms/frame @ 60Hz)
+             │
+             ├── [0.1ms]  ALooper_pollAll  → onAppCmd lifecycle
+             ├── [0.1ms]  processInputEvents → touch/key → input buffer
+             ├── [1ms]    NetworkSystem::update (recv packets, interpolate)
+             ├── [2ms]    MovementSystem::update (integrate velocity→position)
+             ├── [1ms]    PhysicsSystem::syncKinematicToJolt
+             ├── [1ms]    PhysicsWorld::step (Jolt parallel broadphase)
+             ├── [0.5ms]  PhysicsSystem::syncJoltToDynamic
+             ├── [0.5ms]  RenderSystem::update (cull+sort, UBO upload)
+             ├── [3ms]    VulkanRenderer::beginFrame + submitDrawCalls
+             │              └── SwappyVk_queuePresent (paced to 60Hz VSync)
+             └── [~8ms]   GPU renders while CPU starts next frame
