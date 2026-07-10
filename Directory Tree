@@ -1,0 +1,73 @@
+HeroShooterEngine/
+├── app/
+│   ├── build.gradle.kts
+│   ├── src/
+│   │   └── main/
+│   │       ├── AndroidManifest.xml
+│   │       ├── java/
+│   │       │   └── com/
+│   │       │       └── hereshooter/
+│   │       │           └── engine/
+│   │       │               ├── MainActivity.kt
+│   │       │               ├── GameSurfaceView.kt
+│   │       │               └── EngineService.kt
+│   │       ├── cpp/
+│   │       │   ├── CMakeLists.txt
+│   │       │   ├── main/
+│   │       │   │   ├── android_main.cpp          ← JNI/GameActivity entry
+│   │       │   │   └── GameEngine.cpp/.h         ← Core engine orchestrator
+│   │       │   ├── ecs/
+│   │       │   │   ├── EntityManager.h/.cpp
+│   │       │   │   ├── components/
+│   │       │   │   │   ├── TransformComponent.h
+│   │       │   │   │   ├── MovementComponent.h
+│   │       │   │   │   ├── RenderComponent.h
+│   │       │   │   │   ├── PhysicsComponent.h
+│   │       │   │   │   └── NetworkComponent.h
+│   │       │   │   └── systems/
+│   │       │   │       ├── MovementSystem.h/.cpp
+│   │       │   │       ├── PhysicsSystem.h/.cpp
+│   │       │   │       ├── RenderSystem.h/.cpp
+│   │       │   │       └── NetworkSystem.h/.cpp
+│   │       │   ├── rendering/
+│   │       │   │   ├── VulkanRenderer.h/.cpp     ← Vulkan pipeline
+│   │       │   │   ├── VulkanDevice.h/.cpp       ← Device/Queue management
+│   │       │   │   ├── VulkanSwapchain.h/.cpp    ← Swapchain + Swappy
+│   │       │   │   ├── VulkanPipeline.h/.cpp     ← Graphics pipeline
+│   │       │   │   ├── VulkanBuffer.h/.cpp       ← Buffer management
+│   │       │   │   └── ShaderManager.h/.cpp
+│   │       │   ├── physics/
+│   │       │   │   ├── PhysicsWorld.h/.cpp       ← Jolt integration
+│   │       │   │   └── CollisionLayers.h
+│   │       │   ├── audio/
+│   │       │   │   ├── AudioEngine.h/.cpp        ← Oboe integration
+│   │       │   │   └── SoundAsset.h
+│   │       │   ├── network/
+│   │       │   │   ├── NetworkManager.h/.cpp     ← Yojimbo integration
+│   │       │   │   ├── GamePacket.h
+│   │       │   │   └── ClientAdapter.h/.cpp
+│   │       │   ├── memory/
+│   │       │   │   ├── PoolAllocator.h/.cpp      ← Custom allocators
+│   │       │   │   ├── LinearAllocator.h/.cpp
+│   │       │   │   └── MemoryTracker.h
+│   │       │   ├── threading/
+│   │       │   │   ├── ThreadPool.h/.cpp         ← Job system
+│   │       │   │   ├── JobSystem.h/.cpp
+│   │       │   │   └── AtomicQueue.h
+│   │       │   └── utils/
+│   │       │       ├── Logger.h
+│   │       │       ├── Timer.h/.cpp
+│   │       │       └── MathUtils.h
+│   │       └── assets/
+│   │           ├── shaders/
+│   │           │   ├── mesh.vert
+│   │           │   └── mesh.frag
+│   │           └── models/
+├── build.gradle.kts                            ← Root build script
+├── settings.gradle.kts
+├── gradle.properties
+├── local.properties
+└── third_party/                                ← Vendored dependencies
+    ├── entt/                                   ← Header-only ECS
+    ├── jolt/                                   ← Physics engine
+    └── yojimbo/                                ← Networking library
