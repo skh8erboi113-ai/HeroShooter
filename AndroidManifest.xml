@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- app/src/main/AndroidManifest.xml -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- Network permissions for multiplayer -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <!-- Wake lock to prevent screen sleep during gameplay -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+
+    <!-- Vibration for haptic feedback -->
+    <uses-permission android:name="android.permission.VIBRATE" />
+
+    <!-- Require Vulkan 1.1 support -->
+    <uses-feature
+        android:name="android.hardware.vulkan.version"
+        android:version="0x00401000"
+        android:required="true" />
+    <uses-feature
+        android:name="android.hardware.vulkan.level"
+        android:version="1"
+        android:required="true" />
+
+    <application
+        android:allowBackup="false"
+        android:extractNativeLibs="true"
+        android:hardwareAccelerated="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.AppCompat.NoActionBar"
+        tools:targetApi="34">
+
+        <!--
+            GameActivity replaces NativeActivity.
+            android:exported="true" is required for the launcher activity.
+            configChanges: handle these ourselves in native code to avoid
+            activity restarts that would destroy the Vulkan surface.
+        -->
+        <activity
+            android:name="com.heroshooter.engine.MainActivity"
+            android:configChanges="orientation|screenSize|screenLayout|
+                                   keyboardHidden|keyboard|navigation|density"
+            android:exported="true"
+            android:screenOrientation="landscape"
+            android:windowSoftInputMode="adjustResize">
+
+            <!-- Mark as launcher -->
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+            <!--
+                AGDK GameActivity meta-data.
+                lib_name must match the CMake target that produces the .so
+            -->
+            <meta-data
+                android:name="android.app.lib_name"
+                android:value="hero_shooter_engine" />
+
+            <!--
+                Hint the OS to give us exclusive CPU cores (game mode API).
+                Available on Android 12+.
+            -->
+            <meta-data
+                android:name="android.game_mode_config"
+                android:resource="@xml/game_mode_config" />
+        </activity>
+    </application>
+</manifest>
