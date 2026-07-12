@@ -1,0 +1,75 @@
+HeroShooterEngine/
+├── app/
+│   ├── build.gradle.kts
+│   ├── proguard-rules.pro
+│   └── src/main/
+│       ├── AndroidManifest.xml
+│       ├── res/xml/game_mode_config.xml
+│       ├── java/com/heroshooter/engine/
+│       │   └── MainActivity.kt
+│       ├── assets/shaders/
+│       │   ├── mesh.vert           ← PBR vertex shader
+│       │   ├── mesh.frag           ← PBR metallic-roughness fragment
+│       │   ├── shadow_depth.vert   ← Shadow map vertex shader
+│       │   └── debug_line.vert/frag← Debug wireframe
+│       └── cpp/
+│           ├── CMakeLists.txt      ← Full dependency graph
+│           ├── main/
+│           │   ├── android_main.cpp    ← GameActivity entry point
+│           │   ├── GameEngine.h/.cpp   ← Top-level orchestrator
+│           ├── ecs/
+│           │   ├── EntityManager.h/.cpp
+│           │   ├── components/
+│           │   │   ├── TransformComponent.h/.cpp
+│           │   │   ├── MovementComponent.h
+│           │   │   ├── RenderComponent.h
+│           │   │   ├── PhysicsComponent.h
+│           │   │   └── NetworkComponent.h
+│           │   └── systems/
+│           │       ├── MovementSystem.h/.cpp
+│           │       ├── PhysicsSystem.h/.cpp
+│           │       ├── RenderSystem.h/.cpp
+│           │       └── NetworkSystem.h/.cpp
+│           ├── rendering/
+│           │   ├── VulkanRenderer.h/.cpp   ← Instance/device/swapchain/frames
+│           │   ├── VulkanPipeline.h/.cpp   ← PSO creation + bind
+│           │   ├── VulkanBuffer.h/.cpp     ← Buffer RAII + staging upload
+│           │   └── ShaderManager.h/.cpp    ← SPIR-V load from AAsset
+│           ├── physics/
+│           │   ├── PhysicsWorld.h/.cpp     ← Jolt integration
+│           │   └── CollisionLayers.h       ← Layer filter implementations
+│           ├── audio/
+│           │   └── AudioEngine.h/.cpp      ← Oboe stream + mixing
+│           ├── network/
+│           │   ├── NetworkManager.h/.cpp   ← Yojimbo client
+│           │   ├── GamePacket.h            ← Packed packet structs
+│           │   └── ClientAdapter.h         ← Message factory adapter
+│           ├── input/
+│           │   └── InputManager.h/.cpp     ← Touch + gamepad → InputSnapshot
+│           ├── states/
+│           │   ├── GameStateManager.h/.cpp ← Stack-based FSM
+│           │   ├── LoadingState.h/.cpp     ← Async asset load + progress
+│           │   └── MatchState.h/.cpp       ← Main gameplay loop
+│           ├── assets/
+│           │   └── AssetManager.h/.cpp     ← Mesh/texture load + GPU upload
+│           ├── debug/
+│           │   └── DebugRenderer.h/.cpp    ← Line/AABB/sphere + GPU labels
+│           ├── memory/
+│           │   ├── PoolAllocator.h/.cpp    ← Fixed-size O(1) alloc/free
+│           │   ├── LinearAllocator.h/.cpp  ← Arena/bump-pointer allocator
+│           │   └── MemoryTracker.h         ← Thread-safe per-category stats
+│           ├── threading/
+│           │   ├── ThreadPool.h/.cpp       ← Fixed worker pool
+│           │   ├── JobSystem.h/.cpp        ← parallelFor + JobHandle
+│           │   └── AtomicQueue.h           ← Lock-free SPSC ring buffer
+│           └── utils/
+│               ├── Logger.h               ← __android_log_print macros
+│               ├── Timer.h/.cpp           ← CLOCK_BOOTTIME + ScopedCPUTimer
+│               └── MathUtils.h            ← Vec3/Quat/Mat4 helpers
+├── build.gradle.kts
+├── settings.gradle.kts
+├── gradle.properties
+├── Makefile                              ← Convenience build wrapper
+└── scripts/
+    ├── build_and_run.sh                  ← Build + deploy + logcat
+    └── symbolicate_crash.sh             ← Tombstone symbolicator
