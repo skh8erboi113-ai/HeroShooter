@@ -1,0 +1,6 @@
+# Build only arm64-v8a (faster CI iteration)
+./gradlew assembleDebug \
+    -Pandroid.injected.build.abi=arm64-v8a
+
+# Build per-ABI APKs (production distribution)
+./gradlew bundleRelease    # AAB for Play Store (handles ABI splits automatically)
