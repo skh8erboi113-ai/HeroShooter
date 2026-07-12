@@ -1,0 +1,94 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                    HERESHOOTERENGINE — FULL FRAME EXECUTION                 ║
+╠══════════════════════════════════════════════════════════════════════════════╣
+║                                                                              ║
+║  GAME THREAD (main, ~16.67ms @ 60Hz)                                        ║
+║  ─────────────────────────────────────────────────────────────────────────  ║
+║  [0.00ms] ALooper_pollAll(0) ─── poll OS events (non-blocking)              ║
+║           └── onAppCmd() ──────── handle lifecycle changes                  ║
+║                                                                              ║
+║  [0.10ms] InputManager::processEvents()                                     ║
+║           ├── android_app_swap_input_buffers()  ← AGDK double-buffer swap   ║
+║           ├── processTouchEvent() × N           ← floating joysticks        ║
+║           ├── processKeyEvent()   × N           ← gamepad buttons           ║
+║           └── build InputSnapshot                ← deadzone + edge detect   ║
+║                                                                              ║
+║  [0.20ms] GameStateManager::update(dt)                                      ║
+║           └── MatchState::update(dt)                                        ║
+║               ├── handlePlayerInput()   ← apply snapshot→MovementComponent  ║
+║               └── updateMatchTimer()                                        ║
+║                                                                              ║
+║  [0.30ms] NetworkSystem::update(dt)                                         ║
+║           ├── processInboundPackets()  ← drain AtomicQueue from net thread  ║
+║           ├── applySnapshot()          ← store in circular buffer           ║
+║           ├── interpolateRemoteEntities() ← SLERP between snapshots         ║
+║           └── sendLocalPlayerSnapshot() ← every 50ms via Yojimbo unreliable ║
+║                                                                              ║
+║  [0.80ms] MovementSystem::update(dt)                                        ║
+║           └── view<Transform,Movement>.each() ← EnTT cache-friendly         ║
+║               ├── apply input direction                                     ║
+║               ├── semi-implicit Euler: v += a*dt, p += v*dt                ║
+║               ├── apply drag, clamp speed                                  ║
+║               └── mark TransformComponent dirty                             ║
+║                                                                              ║
+║  [1.00ms] PhysicsSystem::syncKinematicToJolt()                              ║
+║           └── view<Transform,Physics(kinematic)>.each()                     ║
+║               └── BodyInterface::SetKinematicTarget(newPos)                 ║
+║                                                                              ║
+║  [1.00ms] PhysicsWorld::step(fixedDt=1/60)  ← Jolt parallel solve          ║
+║           ├── Broadphase (AABB tree update)   [worker threads]              ║
+║           ├── NarrowPhase (GJK/EPA)           [worker threads]              ║
+║           ├── Constraint solver               [worker threads]              ║
+║           └── Contact callbacks → AtomicQueue<CollisionEvent, 256>          ║
+║                                                                              ║
+║  [0.50ms] PhysicsSystem::syncJoltToDynamic()                                ║
+║           └── view<Transform,Physics(dynamic)>.each()                       ║
+║               └── GetBodyTransform() → setPosition/setRotation              ║
+║                                                                              ║
+║  [0.50ms] RenderSystem::update(dt)                                          ║
+║           ├── extractFrustumPlanes()   ← from viewProjection matrix         ║
+║           ├── cullAndSort()                                                 ║
+║           │   ├── view<Transform,Render>.each()                             ║
+║           │   ├── testSphere() per entity    ← frustum cull                 ║
+║           │   ├── LOD selection by distSq                                  ║
+║           │   └── sort opaque front-to-back, transparent back-to-front      ║
+║           └── uploadFrameUBO()  ← memcpy to persistently mapped buffer      ║
+║                                                                              ║
+║  [3.00ms] VulkanRenderer::beginFrame()                                      ║
+║           ├── vkWaitForFences(inFlightFences[frame])                        ║
+║           ├── vkAcquireNextImageKHR() → m_currentImageIndex                 ║
+║           ├── vkResetCommandBuffer()                                        ║
+║           ├── vkBeginCommandBuffer()                                        ║
+║           ├── vkCmdBeginRenderPass()  (clearColor + clearDepth)             ║
+║           └── vkCmdBindPipeline(opaquePipeline)                             ║
+║                                                                              ║
+║  [1.00ms] EntityManager::submitRenderCommands(renderer)                     ║
+║           └── RenderSystem::submitDrawCalls()                               ║
+║               └── for each SortedDrawCall:                                  ║
+║                   ├── vkCmdBindVertexBuffers(meshVBO)                       ║
+║                   ├── vkCmdBindIndexBuffer(meshIBO)                         ║
+║                   ├── vkCmdBindDescriptorSets(frameUBO, materialSet)        ║
+║                   ├── vkCmdPushConstants(modelMatrix, materialIdx)          ║
+║                   └── vkCmdDrawIndexed(indexCount, instanceCount)           ║
+║                                                                              ║
+║  [0.50ms] DebugRenderer::flush()  [DEBUG BUILD ONLY]                        ║
+║           └── vkCmdDraw(lineCount × 2 vertices) ← AABB, navmesh, etc       ║
+║                                                                              ║
+║  [0.50ms] VulkanRenderer::endFrame()                                        ║
+║           ├── vkCmdEndRenderPass()                                          ║
+║           ├── vkEndCommandBuffer()                                          ║
+║           ├── vkQueueSubmit(graphicsQueue, signalSemaphore=renderFinished)  ║
+║           └── SwappyVk_queuePresent()  ← FRAME PACING                       ║
+║               ├── Measure actual frame duration                             ║
+║               ├── Insert sleep if ahead of VSync target                    ║
+║               └── vkQueuePresentKHR(presentQueue)                          ║
+║                                                                              ║
+║  [~8ms] ⬅  GPU renders while CPU is already processing next frame           ║
+║                                                                              ║
+║  PARALLEL THREADS                                                            ║
+║  ─────────────────────────────────────────────────────────────────────────  ║
+║  Audio Thread:   Oboe::onAudioReady() → mixAudio() → AAudio output ~5ms     ║
+║  Net Thread:     Yojimbo send/recv, enqueue to AtomicQueue<GamePacket,512>  ║
+║  Worker Pool:    Jolt broadphase jobs, ECS parallelFor chunks               ║
+║                                                                              ║
+╚══════════════════════════════════════════════════════════════════════════════╝
