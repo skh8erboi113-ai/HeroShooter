@@ -1,0 +1,102 @@
+#!/usr/bin/env bash
+# scripts/build_and_run.sh — Full build, deploy, and logcat workflow
+
+set -euo pipefail
+
+# ── Configuration ──────────────────────────────────────────────────────────────
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+PACKAGE="com.heroshooter.engine"
+ACTIVITY=".MainActivity"
+ABI="arm64-v8a"
+BUILD_TYPE="${1:-debug}"
+
+echo "================================================"
+echo "  HeroShooterEngine Build Script"
+echo "  Build type: $BUILD_TYPE | ABI: $ABI"
+echo "================================================"
+
+cd "$PROJECT_ROOT"
+
+# ── Verify prerequisites ───────────────────────────────────────────────────────
+command -v adb         >/dev/null || { echo "ERROR: adb not in PATH"; exit 1; }
+command -v ./gradlew   >/dev/null || { echo "ERROR: gradlew not found"; exit 1; }
+
+# Check for connected device
+DEVICE_COUNT=$(adb devices | grep -c "device$" || true)
+if [ "$DEVICE_COUNT" -eq 0 ]; then
+    echo "WARNING: No ADB device connected. Building only (no install)."
+    INSTALL=false
+else
+    INSTALL=true
+    DEVICE_MODEL=$(adb shell getprop ro.product.model 2>/dev/null | tr -d '\r')
+    DEVICE_API=$(adb shell getprop ro.build.version.sdk 2>/dev/null | tr -d '\r')
+    echo "Device: $DEVICE_MODEL (API $DEVICE_API)"
+fi
+
+# ── Gradle build ────────────────────────────────────────────────────────────────
+BUILD_TASK="assemble$(echo "${BUILD_TYPE:0:1}" | tr '[:lower:]' '[:upper:]')${BUILD_TYPE:1}"
+echo ""
+echo "==> Running: ./gradlew $BUILD_TASK"
+echo ""
+
+time ./gradlew "$BUILD_TASK" \
+    --parallel \
+    --build-cache \
+    -Pandroid.injected.build.abi="$ABI" \
+    2>&1 | tee "build_${BUILD_TYPE}.log"
+
+# ── Find APK ────────────────────────────────────────────────────────────────────
+APK=$(find "app/build/outputs/apk/${BUILD_TYPE}" -name "*.apk" | head -1)
+if [ -z "$APK" ]; then
+    echo "ERROR: No APK found in app/build/outputs/apk/${BUILD_TYPE}/"
+    exit 1
+fi
+
+APK_SIZE=$(stat -c%s "$APK" 2>/dev/null || stat -f%z "$APK")
+echo ""
+echo "==> Built: $APK ($(echo "$APK_SIZE/1024/1024" | bc) MB)"
+
+# ── Native library size report ─────────────────────────────────────────────────
+SO_PATH="app/build/intermediates/merged_native_libs/${BUILD_TYPE}/out/lib/${ABI}/libhero_shooter_engine.so"
+if [ -f "$SO_PATH" ]; then
+    SO_SIZE=$(stat -c%s "$SO_PATH" 2>/dev/null || stat -f%z "$SO_PATH")
+    echo "==> .so size: $SO_SIZE bytes ($(echo "$SO_SIZE/1024" | bc) KB)"
+
+    NDK_TOOLS="${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/bin"
+    if [ -d "$NDK_TOOLS" ]; then
+        echo ""
+        echo "==> Section sizes:"
+        "${NDK_TOOLS}/llvm-size" "$SO_PATH"
+
+        echo ""
+        echo "==> Exported symbols (should only be android_main):"
+        "${NDK_TOOLS}/llvm-nm" --defined-only --extern-only "$SO_PATH" 2>/dev/null \
+            | grep -v "^$" | head -10
+    fi
+fi
+
+# ── Install and run ────────────────────────────────────────────────────────────
+if [ "$INSTALL" = "true" ]; then
+    echo ""
+    echo "==> Installing APK..."
+    adb install -r "$APK"
+
+    echo "==> Clearing previous logcat..."
+    adb logcat -c
+
+    echo "==> Launching activity..."
+    adb shell am start -n "${PACKAGE}/${PACKAGE}${ACTIVITY}"
+
+    echo ""
+    echo "==> Logcat (Ctrl+C to stop):"
+    echo "    Filter: HeroShooterEngine | Jolt | Swappy | Oboe"
+    echo "================================================"
+    adb logcat -v threadtime \
+        HeroShooterEngine:V \
+        AndroidRuntime:E \
+        SwappyVk:V \
+        Swappy-CL:V \
+        oboe:V \
+        jolt:V \
+        *:S 2>&1
+fi
