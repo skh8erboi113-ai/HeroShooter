@@ -1,0 +1,8 @@
+# Install Android SDK and NDK via sdkmanager
+sdkmanager "ndk;27.1.12297006"
+sdkmanager "cmake;3.28.3"
+sdkmanager "platforms;android-35"
+sdkmanager "build-tools;35.0.0"
+
+# Verify NDK
+ls $ANDROID_NDK_HOME  # Should be set in your environment
