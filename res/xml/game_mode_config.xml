@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- res/xml/game_mode_config.xml
+     Android 12+ Game Mode API configuration.
+     Allows users to switch between Performance/Battery/Standard modes.
+     The engine reads the active mode and adjusts rendering quality.
+-->
+<game-mode-config
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:supportsBatteryGameMode="true"
+    android:supportsPerformanceGameMode="true">
+
+    <!--
+        Performance mode: maximum frame rate, highest visual quality.
+        The OS may provide exclusive CPU cores and higher GPU clocks.
+        Swappy targets 60Hz or the device's maximum refresh rate.
+    -->
+    <game-mode
+        android:mode="performance"
+        android:scaling="1.0"
+        android:fps="60" />
+
+    <!--
+        Battery mode: reduced frame rate to extend battery life.
+        Swappy targets 30Hz. Render resolution scaled down to 75%.
+    -->
+    <game-mode
+        android:mode="battery"
+        android:scaling="0.75"
+        android:fps="30" />
+
+</game-mode-config>
