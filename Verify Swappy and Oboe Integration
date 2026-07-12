@@ -1,0 +1,5 @@
+# Confirm Swappy is linked
+readelf -d app/build/intermediates/merged_native_libs/debug/out/lib/arm64-v8a/libhero_shooter_engine.so \
+    | grep -E "swappy|oboe"
+# Expected: NEEDED entries for libswappy_static.a (none — it's static)
+# Oboe: should appear as part of the symbol table if linked statically
